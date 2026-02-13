@@ -12,6 +12,11 @@ from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 ROOT_DIR = os.path.dirname(os.path.dirname(SCRIPT_DIR))
+# Debug: Print torch info
+print(f"DEBUG: torch version = {torch.__version__}")
+print(f"DEBUG: torch.cuda.is_available() = {torch.cuda.is_available()}")
+print(f"DEBUG: CUDA_HOME = {os.environ.get('CUDA_HOME', 'NOT SET')}")
+print(f"DEBUG: CUDA_PATH = {os.environ.get('CUDA_PATH', 'NOT SET')}")
 
 def min_supported_compute_capability(cuda_version):
 	if cuda_version >= parse_version("13.0"):
