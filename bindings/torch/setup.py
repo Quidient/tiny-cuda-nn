@@ -2,7 +2,7 @@ import os
 
 import re
 from setuptools import setup
-from pkg_resources import parse_version
+from packaging.version import parse as parse_version
 import subprocess
 import shutil
 import sys
@@ -244,10 +244,7 @@ def package_files(directory):
 	return paths
 
 setup(
-	name="tinycudann",
 	version=VERSION,
-	description="tiny-cuda-nn extension for PyTorch",
-	long_description="tiny-cuda-nn extension for PyTorch",
 	classifiers=[
 		"Development Status :: 4 - Beta",
 		"Environment :: GPU :: NVIDIA CUDA",
@@ -266,7 +263,6 @@ setup(
 	maintainer="Thomas Müller",
 	maintainer_email="tmueller@nvidia.com",
 	download_url=f"https://github.com/nvlabs/tiny-cuda-nn",
-	license="BSD 3-Clause \"New\" or \"Revised\" License",
 	packages=["tinycudann"],
 	package_data={"": package_files(rtc_dir)},
 	install_requires=[],
