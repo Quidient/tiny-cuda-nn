@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel", "packaging"]
+requires = ["setuptools>=61.0", "wheel", "packaging", "torch"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,4 +8,3 @@ dynamic = ["version"]
 description = "tiny-cuda-nn extension for PyTorch"
 readme = {text = "tiny-cuda-nn extension for PyTorch", content-type = "text/plain"}
 license = {text = "BSD-3-Clause"}
-dependencies = ["torch"]
