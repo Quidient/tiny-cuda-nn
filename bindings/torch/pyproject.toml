@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel", "packaging", "torch"]
+requires = ["setuptools>=61.0", "wheel", "packaging", "torch==2.8.0+cu128"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,3 +8,12 @@ dynamic = ["version"]
 description = "tiny-cuda-nn extension for PyTorch"
 readme = {text = "tiny-cuda-nn extension for PyTorch", content-type = "text/plain"}
 license = {text = "BSD-3-Clause"}
+dependencies = ["torch==2.8.0+cu128"]
+
+# Configure uv to use PyTorch CUDA index for torch
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
