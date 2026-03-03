@@ -159,7 +159,7 @@ else:
     if min_compute_capability == 61 or min_compute_capability <= 52:
         enable_half = False
     else:
-        enable_half = True
+        enable_half = False
     print(f"Auto-detecting TCNN_HALF_PRECISION: {'ON' if enable_half else 'OFF'} (Arch: {min_compute_capability})")
 base_definitions.append(f"-DTCNN_HALF_PRECISION={int(enable_half)}")
 
