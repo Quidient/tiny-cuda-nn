@@ -10,81 +10,87 @@ on:
       - qmain
 
 jobs:
-  build_wheel_linux:
-    runs-on: self-hosted-ubuntu
-    env:
-      PYTHON_VERSION: "3.12"
-      PYTORCH_VERSION: "2.8.0"
-      CU_VERSION: "cu128"
-      TCNN_CUDA_ARCHITECTURES: "80;86;89;90;120"
-      CONDA_ENV: "tinycudann-build"
+  # build_wheel_linux:
+  #   runs-on: self-hosted-ubuntu
+  #   env:
+  #     PYTHON_VERSION: "3.12"
+  #     PYTORCH_VERSION: "2.8.0"
+  #     CU_VERSION: "cu128"
+  #     TCNN_CUDA_ARCHITECTURES: "80;86;89;90;120"
+  #     CONDA_ENV: "tinycudann-build"
     
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: recursive
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #     with:
+  #       submodules: recursive
     
-    - name: Setup conda environment
-      run: |
-        # Remove existing env if it exists
-        conda env remove -n ${{ env.CONDA_ENV }} || true
-        # Create fresh conda environment
-        conda create -n ${{ env.CONDA_ENV }} python=${{ env.PYTHON_VERSION }} -y
+  #   - name: Setup conda environment
+  #     run: |
+  #       # Remove existing env if it exists
+  #       conda env remove -n ${{ env.CONDA_ENV }} || true
+  #       # Create fresh conda environment
+  #       conda create -n ${{ env.CONDA_ENV }} python=${{ env.PYTHON_VERSION }} -y
     
-    - name: Install dependencies
-      run: |
-        source $(conda info --base)/etc/profile.d/conda.sh
-        conda activate ${{ env.CONDA_ENV }}
-        python -m pip install --upgrade pip
-        pip install torch==${{ env.PYTORCH_VERSION }} --index-url https://download.pytorch.org/whl/${{ env.CU_VERSION }}
-        pip install setuptools wheel packaging
+  #   - name: Install dependencies
+  #     run: |
+  #       source $(conda info --base)/etc/profile.d/conda.sh
+  #       conda activate ${{ env.CONDA_ENV }}
+  #       python -m pip install --upgrade pip
+  #       pip install torch==${{ env.PYTORCH_VERSION }} --index-url https://download.pytorch.org/whl/${{ env.CU_VERSION }}
+  #       pip install setuptools wheel packaging
     
-    - name: Build wheel
-      working-directory: bindings/torch
-      run: |
-        source $(conda info --base)/etc/profile.d/conda.sh
-        conda activate ${{ env.CONDA_ENV }}
-        export MAX_JOBS=$(nproc)
-        echo "Building with MAX_JOBS=$MAX_JOBS"
-        python setup.py bdist_wheel
+  #   - name: Build wheel
+  #     working-directory: bindings/torch
+  #     run: |
+  #       source $(conda info --base)/etc/profile.d/conda.sh
+  #       conda activate ${{ env.CONDA_ENV }}
+  #       export MAX_JOBS=$(nproc)
+  #       echo "Building with MAX_JOBS=$MAX_JOBS"
+  #       python setup.py bdist_wheel
     
-    - name: Upload wheel artifact
-      if: github.event_name == 'release' || github.ref == 'refs/heads/qmain'
-      uses: actions/upload-artifact@v4
-      with:
-        name: tinycudann-wheel-py${{ env.PYTHON_VERSION }}-${{ env.CU_VERSION }}
-        path: bindings/torch/dist/*.whl
-        retention-days: 30
+  #   - name: Upload wheel artifact
+  #     if: github.event_name == 'release' || github.ref == 'refs/heads/qmain'
+  #     uses: actions/upload-artifact@v4
+  #     with:
+  #       name: tinycudann-wheel-py${{ env.PYTHON_VERSION }}-${{ env.CU_VERSION }}
+  #       path: bindings/torch/dist/*.whl
+  #       retention-days: 30
     
-    - name: Run basic tests
-      run: |
-        source $(conda info --base)/etc/profile.d/conda.sh
-        conda activate ${{ env.CONDA_ENV }}
-        pip install bindings/torch/dist/*.whl
-        python -c "import tinycudann; print(f'tiny-cuda-nn loaded successfully')"
-        python -c "import tinycudann as tcnn; print(f'Available: Encoding, Network, NetworkWithInputEncoding')"
+  #   - name: Run basic tests
+  #     run: |
+  #       source $(conda info --base)/etc/profile.d/conda.sh
+  #       conda activate ${{ env.CONDA_ENV }}
+  #       pip install bindings/torch/dist/*.whl
+  #       python -c "import tinycudann; print(f'tiny-cuda-nn loaded successfully')"
+  #       python -c "import tinycudann as tcnn; print(f'Available: Encoding, Network, NetworkWithInputEncoding')"
     
-    - name: Upload wheel to PyPI server
-      if: github.event_name == 'release' || github.ref == 'refs/heads/qmain'
-      run: |
-        # Copy wheel to self-hosted pypiserver
-        WHEEL_FILE=$(ls bindings/torch/dist/tinycudann*.whl | head -1)
-        echo "Uploading $WHEEL_FILE to pypiserver"
-        scp "$WHEEL_FILE" pypi@ci-cd-linux3.quidient.com:/home/pypi/packages/
-        echo "Wheel uploaded. Install with:"
-        echo "  pip install tinycudann --index-url http://ci-cd-linux3.quidient.com/pypi/simple/"
+  #   - name: Upload wheel to PyPI server
+  #     if: github.event_name == 'release' || github.ref == 'refs/heads/qmain'
+  #     run: |
+  #       # Copy wheel to self-hosted pypiserver
+  #       WHEEL_FILE=$(ls bindings/torch/dist/tinycudann*.whl | head -1)
+  #       echo "Uploading $WHEEL_FILE to pypiserver"
+  #       scp "$WHEEL_FILE" pypi@ci-cd-linux3.quidient.com:/home/pypi/packages/
+  #       echo "Wheel uploaded. Install with:"
+  #       echo "  pip install tinycudann --index-url http://ci-cd-linux3.quidient.com/pypi/simple/"
     
-    - name: Cleanup conda environment
-      if: always()
-      run: |
-        conda env remove -n ${{ env.CONDA_ENV }} || true
+  #   - name: Cleanup conda environment
+  #     if: always()
+  #     run: |
+  #       conda env remove -n ${{ env.CONDA_ENV }} || true
 
   build_wheel_windows:
-    runs-on: self-hosted-windows
+    runs-on: at-test
+    strategy:
+      matrix:
+        cuda:
+          - { version: "12.8.0", folder: "cu128" }
+          - { version: "13.0.0", folder: "cu130" }
+
     env:
       PYTHON_VERSION: "3.12"
       PYTORCH_VERSION: "2.8.0"
-      CU_VERSION: "cu128"
+      CU_VERSION: ${{ matrix.cuda.folder }}
       DISTUTILS_USE_SDK: "1"
       TCNN_CUDA_ARCHITECTURES: "80;86;89;90;120"
       CONDA_ENV: "tinycudann-build"
@@ -93,6 +99,11 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: recursive
+    
+    - name: Install CUDA Toolkit
+      uses: Jimver/cuda-toolkit@v0.2.30
+      with:
+        cuda: ${{ matrix.cuda.version }}
     
     - name: Setup conda environment
       shell: pwsh
@@ -146,12 +157,13 @@ jobs:
       if: github.event_name == 'release' || github.ref == 'refs/heads/qmain'
       shell: pwsh
       run: |
-        # Copy wheel to self-hosted pypiserver
         $WHEEL_FILE = Get-ChildItem bindings/torch/dist/tinycudann*.whl | Select-Object -First 1
-        Write-Host "Uploading $WHEEL_FILE to pypiserver"
-        scp $WHEEL_FILE.FullName pypi@ci-cd-linux3.quidient.com:/home/pypi/packages/
+        Write-Host "Uploading $WHEEL_FILE to pypiserver packages/${{ env.CU_VERSION }}/"
+        # Ensure target folder exists on remote, then copy
+        ssh pypi@ci-cd-linux3.quidient.com "mkdir -p /home/pypi/packages/${{ env.CU_VERSION }}"
+        scp $WHEEL_FILE.FullName pypi@ci-cd-linux3.quidient.com:/home/pypi/packages/${{ env.CU_VERSION }}/
         Write-Host "Wheel uploaded. Install with:"
-        Write-Host "  pip install tinycudann --index-url http://ci-cd-linux3.quidient.com/pypi/simple/"
+        Write-Host "  pip install tinycudann --index-url http://ci-cd-linux3.quidient.com/pypi/${{ env.CU_VERSION }}/simple/"
     
     - name: Cleanup conda environment
       if: always()
