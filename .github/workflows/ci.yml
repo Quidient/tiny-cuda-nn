@@ -100,6 +100,15 @@ jobs:
       with:
         submodules: recursive
     
+    - name: Pre-cleanup Miniconda
+      shell: pwsh
+      run: |
+        $condaDir = "$env:USERPROFILE\miniconda3"
+        if (Test-Path $condaDir) {
+            Write-Host "Removing existing Miniconda to ensure clean setup..."
+            Remove-Item -Recurse -Force $condaDir -ErrorAction SilentlyContinue
+        }
+        
     - name: Check for pre-installed CUDA
       id: check-cuda
       shell: pwsh
@@ -198,3 +207,13 @@ jobs:
         scp $WHEEL_FILE.FullName pypi@ci-cd-linux3.quidient.com:/home/pypi/packages/${{ env.CU_VERSION }}/
         Write-Host "Wheel uploaded. Install with:"
         Write-Host "  pip install tinycudann --index-url http://ci-cd-linux3.quidient.com/pypi/${{ env.CU_VERSION }}/simple/"
+        
+    - name: Post-cleanup Miniconda
+      if: always()
+      shell: pwsh
+      run: |
+        $condaDir = "$env:USERPROFILE\miniconda3"
+        if (Test-Path $condaDir) {
+            Write-Host "Cleaning up Miniconda installation..."
+            Remove-Item -Recurse -Force $condaDir -ErrorAction SilentlyContinue
+        }
