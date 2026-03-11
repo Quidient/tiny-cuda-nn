@@ -100,28 +100,40 @@ jobs:
       with:
         submodules: recursive
     
+    - name: Check for pre-installed CUDA
+      id: check-cuda
+      shell: pwsh
+      run: |
+        $cudaDir = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v${{ matrix.cuda.version }}"
+        if (Test-Path $cudaDir) {
+            Write-Host "CUDA v${{ matrix.cuda.version }} found at $cudaDir. Skipping installation."
+            echo "cuda_installed=true" >> $env:GITHUB_OUTPUT
+            echo "CUDA_PATH=$cudaDir" >> $env:GITHUB_ENV
+            echo "PATH=$cudaDir\bin;$env:PATH" >> $env:GITHUB_ENV
+        } else {
+            Write-Host "CUDA not found. Will install via Jimver/cuda-toolkit."
+            echo "cuda_installed=false" >> $env:GITHUB_OUTPUT
+        }
+
     - name: Install CUDA Toolkit
+      if: steps.check-cuda.outputs.cuda_installed == 'false'
       uses: Jimver/cuda-toolkit@v0.2.30
       with:
         cuda: ${{ matrix.cuda.version }}
     
-    - name: Setup conda environment
-      shell: pwsh
-      run: |
-        # Initialize conda for PowerShell
-        conda init powershell
-        # Remove existing env if it exists
-        conda env remove -n ${{ env.CONDA_ENV }} 2>$null
-        # Create fresh conda environment
-        conda create -n ${{ env.CONDA_ENV }} python=${{ env.PYTHON_VERSION }} -y
-    
+    - name: Setup Conda
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        activate-environment: ${{ env.CONDA_ENV }}
+        python-version: ${{ env.PYTHON_VERSION }}
+        auto-activate-base: false
+        use-only-tar-bz2: true
+
     - name: Install dependencies
       shell: pwsh
       run: |
-        & (conda info --base | ForEach-Object { "$_\shell\condabin\conda-hook.ps1" })
         conda activate ${{ env.CONDA_ENV }}
-        python -m pip install --upgrade pip
-        pip install torch==${{ env.PYTORCH_VERSION }} --index-url https://download.pytorch.org/whl/${{ env.CU_VERSION }}
+        python -m pip install torch==${{ env.PYTORCH_VERSION }} --index-url https://download.pytorch.org/whl/${{ env.CU_VERSION }}
         pip install setuptools wheel packaging
     
     - name: Build wheel
@@ -143,7 +155,6 @@ jobs:
         # 3. Build using legacy mode
         # Enter VS Developer Shell for cl.exe discovery
         ..\..\scripts\enter_vs_dev_shell.ps1
-        & (conda info --base | ForEach-Object { "$_\shell\condabin\conda-hook.ps1" })
         conda activate ${{ env.CONDA_ENV }}
         $env:MAX_JOBS = (Get-CimInstance Win32_ComputerSystem).NumberOfLogicalProcessors
         Write-Host "Building with MAX_JOBS=$env:MAX_JOBS"
@@ -166,7 +177,6 @@ jobs:
     - name: Run basic tests
       shell: pwsh
       run: |
-        & (conda info --base | ForEach-Object { "$_\shell\condabin\conda-hook.ps1" })
         conda activate ${{ env.CONDA_ENV }}
         pip install (Get-ChildItem bindings/torch/dist/*.whl).FullName
         python -c "import tinycudann; print(f'tiny-cuda-nn loaded successfully')"
@@ -183,9 +193,3 @@ jobs:
         scp $WHEEL_FILE.FullName pypi@ci-cd-linux3.quidient.com:/home/pypi/packages/${{ env.CU_VERSION }}/
         Write-Host "Wheel uploaded. Install with:"
         Write-Host "  pip install tinycudann --index-url http://ci-cd-linux3.quidient.com/pypi/${{ env.CU_VERSION }}/simple/"
-    
-    - name: Cleanup conda environment
-      if: always()
-      shell: pwsh
-      run: |
-        conda env remove -n ${{ env.CONDA_ENV }} 2>$null
