@@ -100,13 +100,18 @@ jobs:
       with:
         submodules: recursive
     
-    - name: Pre-cleanup Miniconda
+    - name: Check for pre-installed Miniconda
+      id: check-conda
       shell: pwsh
       run: |
         $condaDir = "$env:USERPROFILE\miniconda3"
-        if (Test-Path $condaDir) {
-            Write-Host "Removing existing Miniconda to ensure clean setup..."
-            Remove-Item -Recurse -Force $condaDir -ErrorAction SilentlyContinue
+        if (Test-Path "$condaDir\Scripts\conda.exe") {
+            Write-Host "Miniconda already exists at $condaDir. Skipping installation."
+            echo "conda_installed=true" >> $env:GITHUB_OUTPUT
+            echo "$condaDir\condabin" >> $env:GITHUB_PATH
+        } else {
+            Write-Host "Miniconda not found at $condaDir. Will install via setup-miniconda."
+            echo "conda_installed=false" >> $env:GITHUB_OUTPUT
         }
         
     - name: Check for pre-installed CUDA
@@ -134,6 +139,7 @@ jobs:
         cuda: ${{ matrix.cuda.version }}
     
     - name: Setup Conda
+      if: steps.check-conda.outputs.conda_installed == 'false'
       uses: conda-incubator/setup-miniconda@v3
       with:
         activate-environment: ${{ env.CONDA_ENV }}
@@ -142,6 +148,15 @@ jobs:
         conda-solver: libmamba
         miniconda-version: "latest"
         use-only-tar-bz2: true
+
+    - name: Initialize Conda for Pre-installed
+      if: steps.check-conda.outputs.conda_installed == 'true'
+      shell: pwsh
+      run: |
+        $condaDir = "$env:USERPROFILE\miniconda3"
+        & "$condaDir\shell\condabin\conda-hook.ps1"
+        conda env remove -n ${{ env.CONDA_ENV }} --all -y 2>$null
+        conda create -n ${{ env.CONDA_ENV }} python=${{ env.PYTHON_VERSION }} -y
 
     - name: Install dependencies
       shell: pwsh
@@ -207,13 +222,3 @@ jobs:
         scp $WHEEL_FILE.FullName pypi@ci-cd-linux3.quidient.com:/home/pypi/packages/${{ env.CU_VERSION }}/
         Write-Host "Wheel uploaded. Install with:"
         Write-Host "  pip install tinycudann --index-url http://ci-cd-linux3.quidient.com/pypi/${{ env.CU_VERSION }}/simple/"
-        
-    - name: Post-cleanup Miniconda
-      if: always()
-      shell: pwsh
-      run: |
-        $condaDir = "$env:USERPROFILE\miniconda3"
-        if (Test-Path $condaDir) {
-            Write-Host "Cleaning up Miniconda installation..."
-            Remove-Item -Recurse -Force $condaDir -ErrorAction SilentlyContinue
-        }
