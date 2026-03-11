@@ -89,7 +89,7 @@ jobs:
 
     env:
       PYTHON_VERSION: "3.12"
-      PYTORCH_VERSION: "2.8.0"
+      PYTORCH_VERSION: "2.10.0"
       CU_VERSION: ${{ matrix.cuda.folder }}
       DISTUTILS_USE_SDK: "1"
       TCNN_CUDA_ARCHITECTURES: "80;86;89;90;120"
@@ -154,7 +154,7 @@ jobs:
         python -c "import tinycudann as tcnn; print(f'Available: Encoding, Network, NetworkWithInputEncoding')"
     
     - name: Upload wheel to PyPI server
-      if: github.event_name == 'release' || github.ref == 'refs/heads/qmain'
+      # if: github.event_name == 'release' || github.ref == 'refs/heads/qmain'
       shell: pwsh
       run: |
         $WHEEL_FILE = Get-ChildItem bindings/torch/dist/tinycudann*.whl | Select-Object -First 1
