@@ -128,6 +128,19 @@ jobs:
       shell: pwsh
       working-directory: bindings/torch
       run: |
+        # 1. Rename pyproject.toml to force legacy setup.py mode
+        if (Test-Path "pyproject.toml") {
+            Move-Item "pyproject.toml" "pyproject.toml.bak"
+        }
+        
+        # 2. Patch setup.py for CI
+        # This replaces the empty list with the specific version
+        $torch_req = "${{ env.PYTORCH_VERSION }}+${{ matrix.cuda.folder }}"
+        $content = Get-Content setup.py
+        $content -replace 'install_requires=\[]', "install_requires=['torch==$torch_req']" | Set-Content setup.py
+        Write-Host "Patched setup.py with torch==$torch_req"
+        
+        # 3. Build using legacy mode
         # Enter VS Developer Shell for cl.exe discovery
         ..\..\scripts\enter_vs_dev_shell.ps1
         & (conda info --base | ForEach-Object { "$_\shell\condabin\conda-hook.ps1" })
@@ -135,6 +148,12 @@ jobs:
         $env:MAX_JOBS = (Get-CimInstance Win32_ComputerSystem).NumberOfLogicalProcessors
         Write-Host "Building with MAX_JOBS=$env:MAX_JOBS"
         python setup.py bdist_wheel
+
+        # 4. Restore original files (Cleanup)
+        if (Test-Path "pyproject.toml.bak") {
+            Move-Item "pyproject.toml.bak" "pyproject.toml"
+        }
+        git checkout setup.py
     
     - name: Upload wheel artifact
       if: github.event_name == 'release' || github.ref == 'refs/heads/qmain'
