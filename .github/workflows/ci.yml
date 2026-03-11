@@ -130,6 +130,8 @@ jobs:
         activate-environment: ${{ env.CONDA_ENV }}
         python-version: ${{ env.PYTHON_VERSION }}
         auto-activate-base: false
+        conda-solver: libmamba
+        miniconda-version: "latest"
         use-only-tar-bz2: true
 
     - name: Install dependencies
