@@ -104,7 +104,10 @@ jobs:
       id: check-cuda
       shell: pwsh
       run: |
-        $cudaDir = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v${{ matrix.cuda.version }}"
+        # Take the version (e.g., "12.8.0") and truncate the last .0 part to get "12.8"
+        $version = "${{ matrix.cuda.version }}"
+        $majorMinor = $version -replace "\.\d+$", ""
+        $cudaDir = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v$majorMinor"
         if (Test-Path $cudaDir) {
             Write-Host "CUDA v${{ matrix.cuda.version }} found at $cudaDir. Skipping installation."
             echo "cuda_installed=true" >> $env:GITHUB_OUTPUT
